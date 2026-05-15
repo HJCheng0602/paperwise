@@ -84,6 +84,7 @@ def read(pdf_path: Path | None, arxiv_id: str | None, force: bool, no_kb: bool,
         external_entries = load_external_kb(external_kb_path)
         if not external_entries:
             console.print("[yellow]Warning:[/] External KB file loaded but contains no valid entries.")
+        no_kb = True  # external KB replaces ChromaDB — no need to index
 
     from research_helper.readers import arxiv_reader, pdf_reader
     from research_helper.reports import single_paper
@@ -303,7 +304,10 @@ def kb_stats():
               help="Re-extract concepts/relations even if cached.")
 @click.option("--open", "open_browser", is_flag=True, default=False,
               help="Open the HTML graph in the default browser after generation.")
-def graph(out_dir: str, threshold: float, no_cache: bool, open_browser: bool):
+@click.option("--no-similarity", is_flag=True, default=False,
+              help="Skip similarity edges (no ChromaDB required).")
+def graph(out_dir: str, threshold: float, no_cache: bool, open_browser: bool,
+          no_similarity: bool):
     """Build a knowledge graph from all papers in outputs/."""
     from research_helper.kb.graph import build, export_json, export_html
     import shutil
@@ -323,7 +327,8 @@ def graph(out_dir: str, threshold: float, no_cache: bool, open_browser: bool):
         def _update(msg: str):
             prog.update(task, description=msg)
 
-        nodes, edges = build(similarity_threshold=threshold, progress_cb=_update)
+        nodes, edges = build(similarity_threshold=threshold, progress_cb=_update,
+                             skip_similarity=no_similarity)
 
         prog.update(task, description="Exporting JSON…")
         json_path = out_path / "graph.json"
