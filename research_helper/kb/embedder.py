@@ -25,14 +25,14 @@ def embed_one(text: str) -> list[float]:
 
 def _embed_openai_compat(texts: list[str], provider: str) -> list[list[float]]:
     from openai import OpenAI
-    from research_helper.llm.client import _BASE_URLS, _api_key
+    from research_helper.llm.client import _get_base_url, _api_key
     from research_helper.utils import cost_tracker
 
     model = config.EMBEDDING_MODEL or _DEFAULT_MODELS[provider]
-    client = OpenAI(
-        api_key=_api_key(provider),
-        base_url=_BASE_URLS.get(provider),
-    )
+    import os
+    api_key = os.getenv("EMBEDDING_API_KEY") or _api_key(provider)
+    base_url = os.getenv("EMBEDDING_BASE_URL") or _get_base_url(provider)
+    client = OpenAI(api_key=api_key, base_url=base_url)
     results: list[list[float]] = []
     total_tokens = 0
     for batch in _batched(texts, 10 if provider == "qwen" else 25):
