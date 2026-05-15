@@ -1,7 +1,6 @@
 """ChromaDB-backed knowledge base store."""
 from __future__ import annotations
 import math
-from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
@@ -32,15 +31,7 @@ def _get_collection():
     return _collection
 
 
-@dataclass
-class KBEntry:
-    doc_id: str
-    text: str
-    title: str
-    arxiv_id: str
-    published: str
-    source: str          # "abstract" | "report"
-    distance: float = 0.0
+from research_helper.kb._types import KBEntry
 
 
 def add(

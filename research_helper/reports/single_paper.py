@@ -145,21 +145,33 @@ KB_SECTION_TEMPLATE = """\
 """
 
 
-def _build_kb_section(query_text: str, current_arxiv_id: str = "") -> str:
-    try:
-        from research_helper.kb import store
-        entries = store.query(query_text, top_k=6)
-    except Exception:
-        return ""
-    entries = [e for e in entries if e.arxiv_id != current_arxiv_id][:5]
-    if not entries:
+def _build_kb_section(query_text: str, current_arxiv_id: str = "",
+                      external_kb_entries: list | None = None) -> str:
+    if external_kb_entries is not None:
+        entries = [e for e in external_kb_entries if e.arxiv_id != current_arxiv_id][:5]
+        if not entries:
+            import sys
+            print("[KB] 外部知识库为空或无相关论文", file=sys.stderr)
+            return ""
         import sys
-        print("[KB] 知识库为空或无相关论文", file=sys.stderr)
-        return ""
-    import sys
-    print(f"[KB] 检索到 {len(entries)} 篇相关论文：", file=sys.stderr)
-    for e in entries:
-        print(f"  - {e.title} ({e.arxiv_id})", file=sys.stderr)
+        print(f"[KB] 外部知识库提供 {len(entries)} 篇相关论文：", file=sys.stderr)
+        for e in entries:
+            print(f"  - {e.title} ({e.arxiv_id})", file=sys.stderr)
+    else:
+        try:
+            from research_helper.kb import store
+            entries = store.query(query_text, top_k=6)
+        except Exception:
+            return ""
+        entries = [e for e in entries if e.arxiv_id != current_arxiv_id][:5]
+        if not entries:
+            import sys
+            print("[KB] 知识库为空或无相关论文", file=sys.stderr)
+            return ""
+        import sys
+        print(f"[KB] 检索到 {len(entries)} 篇相关论文：", file=sys.stderr)
+        for e in entries:
+            print(f"  - {e.title} ({e.arxiv_id})", file=sys.stderr)
     lines = []
     for e in entries:
         lines.append(
@@ -202,18 +214,20 @@ def generate(
     meta: PaperMeta,
     full_text: str,
     force: bool = False,
+    external_kb_entries: list | None = None,
 ) -> Path:
     report_path = paper_dir / "report.md"
-    if report_path.exists() and not force:
+    if report_path.exists() and not force and external_kb_entries is None:
         return report_path
 
     cached = load_cache(paper_dir, "analysis")
-    if cached and not force:
+    if cached and not force and external_kb_entries is None:
         answers = cached
     else:
         content = _prepare_content(meta.title, full_text)
         query_text = f"{meta.title}\n{meta.abstract}"
-        kb_section = _build_kb_section(query_text, current_arxiv_id=meta.arxiv_id)
+        kb_section = _build_kb_section(query_text, current_arxiv_id=meta.arxiv_id,
+                                        external_kb_entries=external_kb_entries)
 
         answers = []
         for prompt_tpl in SECTION_PROMPTS:

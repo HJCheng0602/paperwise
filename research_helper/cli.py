@@ -65,13 +65,25 @@ def main():
               help="Regenerate report even if it already exists.")
 @click.option("--no-kb", is_flag=True, default=False,
               help="Skip knowledge base indexing after report generation.")
-def read(pdf_path: Path | None, arxiv_id: str | None, force: bool, no_kb: bool):
+@click.option("--external-kb", "external_kb_path", type=click.Path(exists=True, path_type=Path),
+              default=None,
+              help="Path to a JSON file of external KB entries (e.g. from Zotero MCP). "
+                   "Replaces ChromaDB KB for this report.")
+def read(pdf_path: Path | None, arxiv_id: str | None, force: bool, no_kb: bool,
+         external_kb_path: Path | None):
     """Generate a deep-reading report for a single paper."""
     if not pdf_path and not arxiv_id:
         console.print("[red]Error:[/] Provide --pdf or --arxiv.")
         sys.exit(1)
 
     _ensure_api_key()
+
+    external_entries = None
+    if external_kb_path:
+        from research_helper.kb.external import load_external_kb
+        external_entries = load_external_kb(external_kb_path)
+        if not external_entries:
+            console.print("[yellow]Warning:[/] External KB file loaded but contains no valid entries.")
 
     from research_helper.readers import arxiv_reader, pdf_reader
     from research_helper.reports import single_paper
@@ -122,7 +134,8 @@ def read(pdf_path: Path | None, arxiv_id: str | None, force: bool, no_kb: bool):
 
         # --- Generate report ---
         task3 = prog.add_task("Generating report with LLM…")
-        report_path = single_paper.generate(paper_dir, meta, full_text, force=force)
+        report_path = single_paper.generate(paper_dir, meta, full_text, force=force,
+                                             external_kb_entries=external_entries)
         prog.update(task3, description=f"[green]Report saved →[/] {report_path}")
 
         # --- Index into KB ---
