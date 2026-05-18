@@ -1,7 +1,8 @@
 from __future__ import annotations
+import os
 from research_helper import config
 
-_BASE_URLS = {
+_DEFAULT_BASE_URLS = {
     "deepseek": "https://api.deepseek.com",
     "qwen":     "https://dashscope.aliyuncs.com/compatible-mode/v1",
 }
@@ -12,6 +13,17 @@ _DEFAULT_MODELS = {
     "deepseek":  "deepseek-chat",
     "qwen":      "qwen-plus",
 }
+
+
+def _get_base_url(provider: str) -> str | None:
+    """Return base URL for provider. Checks EMBEDDING_BASE_URL (generic),
+    then {PROVIDER}_BASE_URL env var, falls back to hardcoded default.
+    Returns None for openai (uses SDK default)."""
+    generic = os.getenv("EMBEDDING_BASE_URL")
+    if generic and provider in ("qwen", "openai"):
+        return generic
+    env_key = f"{provider.upper()}_BASE_URL"
+    return os.getenv(env_key) or _DEFAULT_BASE_URLS.get(provider)
 
 
 def complete(system: str, user: str, max_tokens: int = 4096) -> str:
@@ -49,7 +61,7 @@ def _openai_compat(system: str, user: str, model: str, max_tokens: int, provider
     from research_helper.utils import cost_tracker
 
     api_key = _api_key(provider)
-    base_url = _BASE_URLS.get(provider)
+    base_url = _get_base_url(provider)
 
     client = OpenAI(api_key=api_key, base_url=base_url)
     resp = client.chat.completions.create(

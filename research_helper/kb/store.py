@@ -1,25 +1,24 @@
 """ChromaDB-backed knowledge base store."""
 from __future__ import annotations
 import math
-from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-import chromadb
-from chromadb.config import Settings
-
 from research_helper.kb import embedder
+from research_helper.kb._types import KBEntry
 
 _KB_DIR = Path("outputs/.kb")
 _COLLECTION = "papers"
 
-_client: chromadb.PersistentClient | None = None
+_client = None
 _collection = None
 
 
 def _get_collection():
     global _client, _collection
     if _collection is None:
+        import chromadb
+        from chromadb.config import Settings
         _KB_DIR.mkdir(parents=True, exist_ok=True)
         _client = chromadb.PersistentClient(
             path=str(_KB_DIR),
@@ -31,16 +30,6 @@ def _get_collection():
         )
     return _collection
 
-
-@dataclass
-class KBEntry:
-    doc_id: str
-    text: str
-    title: str
-    arxiv_id: str
-    published: str
-    source: str          # "abstract" | "report"
-    distance: float = 0.0
 
 
 def add(

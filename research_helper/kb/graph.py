@@ -88,6 +88,7 @@ def build(
     outputs_dir: Path | None = None,
     similarity_threshold: float = 0.55,
     progress_cb=None,
+    skip_similarity: bool = False,
 ) -> tuple[list[GNode], list[GEdge]]:
     """Build graph from all papers in outputs_dir. Returns (nodes, edges)."""
     if outputs_dir is None:
@@ -173,7 +174,7 @@ def build(
             ))
 
     # ── Pass 4: similarity edges from vector store ───────────────────────────
-    if len(paper_nodes) >= 2:
+    if not skip_similarity and len(paper_nodes) >= 2:
         if progress_cb:
             progress_cb("Computing similarity edges…")
         _add_similarity_edges(paper_nodes, edges, similarity_threshold)
